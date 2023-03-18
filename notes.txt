@@ -1,0 +1,95 @@
+Workflow :
+
+- DONE - Lancer un nouvel évènement depuis discord en spécifiant différents paramètres (possible uniquement par moi-même) -> !start_event | <NOM> | <DESCRIPTION> | <LIEN> | <NOMBRE_FLAGS> | <DATE_DEBUT> | <DATE_FIN> -> format des dates : JJ-MM-AAAA HH:MM -> attention à convertir dans le bon format pour insérer dans MySQL -> YYYY-MM-DD HH:MM:SS
+
+- Il est possible de modifier, stopper et supprimer un évènement.
+
+- DONE - Evènement créé en avance. On ajoute automatiquement un bouton réaction pour voir combien de personnes sont potentiellement intéressées. Quand on crée un event, on crée aussi un rôle notification associé. Quand quelqu'un clique sur le bouton pour participer alors on va lui donner le rôle. Le bot va envoyer un message qui tag les personnes avec le rôle quelques heures ? minutes ? avant le début de l'event.
+- DONE - Une fois que l'event est lancé, il est toujours possible pour un utilisateur de se retirer le rôle notification en cliquant de nouveau sur l'emote.
+- DONE - A la fin de l'event envoyer un message et tag ceux avec le rôle pour leur indiquer la fin. Puis supprimer le rôle.
+- DONE - Un utilisateur ne peut soumettre que le nombre exact de flags que le challenge accepte. Il n'est pas possible de les supprimer ou modifier ensuite.
+- DONE - Quand un utilisateur donne un flag, on vérifie s'il (utilisateur) existe déjà dans la base de données. Si oui alors on crée une nouvelle soumission, sinon on ajoute juste une nouvelle soumission.
+- DONE - Pour soumettre un flag, l'utilisateur doit envoyer un message privé au bot avec la commande suivante -> !submit <FLAG> -> pas besoin de donner le numéro de l'event car il ne peut y avoir qu'un seul event à la fois. Donc on va chercher dans la BDD celui qui est en "running"
+- DONE - La table flag correspond aux flags corrects finaux à la fin de l'event.
+- DONE - Si l'event n'est pas en cours alors le bot n'enregistre pas ce qu'on lui envoie (ignore).
+- DONE - Quand un event est annulé (event pas encore en cours), ne pas notifier les utilisateurs, supprimer le rôle et update dans la BDD l'event avec l'état "cancelled".
+- DONE - Il est possible d'annuler quand un event est déjà en cours. Dans ce cas, supprimer le rôle, update BDD -> cancelled, supprimer tout ce qui correspond à cet event dans
+la bdd -> delete from votes where event_id = event_id, delete from submissions where event_id = event_id, delete from votes where event_id = event_id
+- DONE - La difficulté d'un event est indiquée définitivement à la fin de l'event. Elle ne peut plus être modifiée ensuite. Elle est calculée en faisant la moyenne de tous les flags entrés par les utilisateurs pendant l'event.
+- DONE - Quand un utilisateur a donné un flag au bot, le bot lui répond avec un message qui contient des emotes liés au message de 0 à 10. L'utilisateur doit alors noter en cliquant sur la difficulté qu'il souhaite donner au flag. Une fois cliqué, on ne peut plus modifier ni revenir en arrière pour cet event.
+- DONE - Si l'utilisateur n'a pas cliqué et que l'event est terminé alors on désactive les boutons et il ne peut plus voter.
+- DONE - Si la fin de l'event approche et que l'utilisateur n'a pas noté la difficulté de tous les flags qu'il a submit, alors on lui notifie l'oubli du vote. Si pas de réponse quand fin de l'event alors on ne prend pas en compte le vote et on désactive également la possibilité de répondre pour cet event.
+- DONE - Il faut alors utiliser la commande !add_flag suivi de l'id de l'event ainsi que le nom du flag et le hash correspondant. On doit préciser l'id de l'event car il peut s'agir d'un ancien event ou de l'event actuel. Il faut effectuer la commande autant de fois qu'il y a de flags pour cet event. On appelle la fonction de calcul des points. Les points sont stockés dans la BDD pour chaque utilisateur uniquement à la fin de l'event quand les coefficients ne peuvent plus changer. On récupère les points de chaque utilisateur et on ajoute ceux de l'event qui vient de se terminer.
+- DONE - On peut manuellement terminer un event avec la commande !stop. Il faut ensuite ajouter les flags corrects avec !add_flags. 
+- DONE - Ajouter la possibilité de modifier les flags d'un event. Dans ce cas là, il faut recalculer les points des utilisateurs.
+On récupère la liste des utilisateurs (discord_id) qui avaient l'ancien hash correct, on calcule la difficulté de l'event (self.compute_points(event_id)), on retire ces points aux utilisateurs (self.assign_points(event_id, ANCIEN_HASH, - POINTS)) -> on ajoute les points négativement pour les retirer.
+On update le flag dans la BDD, on check les utilisateurs qui ont le bon flag et on leur rajoute les points calculés juste avant (self.assign_points(event_id, NEW_HASH, POINTS)). -> !update_flag EVENT_ID FLAG_NAME NEW_HASH
+- DONE - Possibilité de lister les différents events (simple select dans la BDD avec un filtre sur l'état) -> !upcoming, !running, !finished). Cette liste contient uniquement les informations classiques -> nom event (+ id), date début, date fin et nombre participants (on compte le nombre de soumissions uniques pour chaque utilisateur dans la table submissions par rapport à un event -> quelque chose comme ça : select count(DISTINCT discord_id) from submissions where event_id = X).
+- DONE - Affichage du leaderboard global avec la command !leaderboard -> Select name from users ORDER BY points DESC;
+- DONE - Ajouter des timeouts pour les commandes de listing des events pour éviter le spam
+- DONE - Pour avoir plus d'informations sur un event (statut de l'event (running, upcoming...), noms des participants, classement, nombre participants, nombre flags, etc...) -> !info <NUMERO_EVENT>
+- DONE - Au niveau des soumissions, la vitesse de soumission des flags a son importance. Calculer le first blood au niveau de la BDD lorsqu'on affiche les scores
+- DONE - Commande !help pour avoir les commandes disponibles ainsi que les paramètres pour chaque commande.
+- DONE - Infos sur un utilisateur -> !info @KrowZ -> affichage du nombre de points, position dans le classement général, nombre de participations, nombre flags soumis, nombre de flags corrects, nombre de first bloods, liste des évènements auxquels il a participé.
+- DONE - Regarder dans database.py pour retirer les requêtes qui ne sont jamais utilisées
+- DONE - Mettre en embed l'affichage de !info @USER
+- DONE - Vérifier la sécurité des inputs (notamment au niveau de la base de données) -> utiliser la fonction sanitize
+- DONE - Ajouter ->  and message.channel.id == 1085676265270411344 -> dans tous les if(message.content.startswith) -> sauf pour les commandes admin
+- DONE - Modifier tous les IDs des channels dans le code pour qu'ils matchent le serveur -> self.current_guild, self.log_channel
+
+
+
+- Dans une version plus poussée du bot, on pourrait créer un event en avance en connaissant déjà les bons flags. Dans ce cas, dès qu'un utilisateur submit un flag au bot, on peut directement calculer son nombre de points (il sera modifié au fur et à mesure de l'event en fonction des notes qui sont données et qui influent sur le score de difficulté des flags.)
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Database tables:
+
+- events : create table events (event_id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), description VARCHAR(255), url VARCHAR(255), number_of_flags INT DEFAULT 2, starting_date DATETIME, ending_date DATETIME, difficulty INT DEFAULT 0, state INT DEFAULT 0);
+- users : create table users (discord_id BIGINT PRIMARY KEY, points INT DEFAULT 0);
+- flags : create table flags (flag_id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), event_id INT, hash VARCHAR(255));
+- submissions : create table submissions (submission_id INT AUTO_INCREMENT PRIMARY KEY, discord_id BIGINT, event_id INT, hash VARCHAR(255), date DATETIME);
+- votes : create table votes (vote_id INT AUTO_INCREMENT PRIMARY KEY, discord_id BIGINT, event_id INT, note INT DEFAULT 0);
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Description détaillée des tables :
+
+- Un évènement possède les éléments suivants :
+	- ID (random - unique)
+	- Nom
+	- Description
+	- Difficulté globale /10 (Moyenne calculée avec la difficulté des flags en globalité) -> par défaut 0/10, donc aucun point rajouté aux flags -> +3 points pour chaque point de difficulté supplémentaire (donc max 40 points = 10/10)
+	- Lien vers le challenge
+	- Nombre de flags à rentrer (par défaut 1 flag = 10 points. Peut être modifé par la difficulté)
+	- Date de début
+	- Date de fin
+	- Etat (0 -> upcoming, 1 -> running, 2 -> finished, 3 -> cancelled)
+
+
+- Un utilisateur possède les éléments suivants :
+	- Discord ID (unique)
+	- Name (#XXXX)
+	- Points
+
+- Un flag (table utilisée uniquement pour stocker les flags finaux qui correspondent aux réponses "officielles") possède les éléments suivants : 
+	- Flag ID (random - unique)
+	- Nom du flag (user, root ou autre si plus de flags)
+	- Event ID (lié à events)
+	- Hash
+
+- Une soumission possède les éléments suivants :
+	- Submission ID (random - unique)
+	- Discord ID (lié à users)
+	- Event ID (lié à events)
+	- Hash (string)
+	- Date de soumission (date + heure, minutes, secondes)
+
+- Un vote possède les éléments suivants : (obligé de stocker l'information en BDD pour savoir si tel utilisateur a déjà voté pour la difficulté d'un flag)
+	- Vote ID (random - unique)
+	- Discord ID (lié à users)
+	- Event ID (lié à events)
+	- Note (int de 0 à 10)
