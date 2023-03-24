@@ -39,6 +39,7 @@ On update le flag dans la BDD, on check les utilisateurs qui ont le bon flag et 
 
 
 
+
 - Dans une version plus poussée du bot, on pourrait créer un event en avance en connaissant déjà les bons flags. Dans ce cas, dès qu'un utilisateur submit un flag au bot, on peut directement calculer son nombre de points (il sera modifié au fur et à mesure de l'event en fonction des notes qui sont données et qui influent sur le score de difficulté des flags.)
 
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------

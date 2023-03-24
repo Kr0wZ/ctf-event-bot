@@ -1,5 +1,4 @@
 import discord
-import time
 import datetime
 import database
 import re
