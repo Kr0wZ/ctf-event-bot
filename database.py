@@ -60,7 +60,7 @@ class Database:
 	# 	self.execute_command("SELECT * FROM users")
 	# 	return self.db_cursor.fetchall()
 
-	def get_all_users_asc(self):
+	def get_all_users_desc(self):
 		self.use_database()
 		self.execute_command("SELECT * FROM users ORDER BY points DESC")
 		return self.db_cursor.fetchall()
