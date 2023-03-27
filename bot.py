@@ -43,10 +43,18 @@ class Bot(discord.Client):
 		print(self.user.id)
 		print('------')
 
-	#Remove all potential risky chars
-	def sanitize(self, message):
+	#Remove all potential risky chars and gets only the LENGTH first chars of the string
+	#Return the sanitized message if the message has passed the test and then contains only alphanum (or _-=), else None
+	def sanitize(self, message, length):
+		message = message[:length]
 		harmful = "\"\'\<\>\\\/\^\`\|\(\)\[\]\{\}\~\&\$\£\%\ù\*\#\@\µ\!\§\;\?\,\."
-		return re.sub(r'[' + harmful + ']', '', message)
+		message = re.sub(r'[' + harmful + ']', '', message)
+
+		if(re.match("^[a-zA-Z0-9\_\-\=]*$", flag) != None):
+			return message
+		else:
+			return None
+
 
 	def random_color(self):
 		hexa = "0123456789abcdef"
@@ -85,7 +93,10 @@ class Bot(discord.Client):
 			pass
 
 	async def print_global_leaderboard(self, description):
-		users = self.db.get_all_users_asc()
+		users = self.db.get_all_users_desc()
+
+		if(len(users) == 0): description += "No participants yet"
+
 		count = 1
 
 		for user in users:
@@ -171,8 +182,14 @@ class Bot(discord.Client):
 		dt_now = datetime.datetime.now()
 		time_delta = dt_date - dt_now
 
-		#Modify seconds to minutes after the tests
+		#Convert minutes to seconds because we cannot use time_delta.minutes
+		minutes_before = minutes_before * 60
+
+		#print(f"Time delta in seconds: {time_delta.seconds} > minutes before: {minutes_before}")
+
+		#Change timezone on the system because UTC instead of UTC+1
 		if(time_delta.seconds < minutes_before):
+			#print("time_delta < minutes_before")
 			await channel.send(role_id)
 			await channel.send(embed=embed)
 			self.already_notified = True
@@ -182,8 +199,14 @@ class Bot(discord.Client):
 		dt_now = datetime.datetime.now()
 		time_delta = dt_date - dt_now
 
-		#Modify seconds to minutes after the tests
+		#Convert minutes to seconds because we cannot use time_delta.minutes
+		minutes_before = minutes_before * 60
+
+		#print(f"Time delta in seconds: {time_delta.seconds} > minutes before: {minutes_before}")
+
+		#Change timezone on the system because UTC instead of UTC+1
 		if(time_delta.seconds < minutes_before):
+			#print("time_delta < minutes_before")
 			await channel.send("A vote for a flag's difficulty is missing!")
 
 	#Convert a date from YYYY-MM-DD HH:MM to datetime format
@@ -254,8 +277,10 @@ class Bot(discord.Client):
 			now = datetime.datetime.now().strftime("%y-%m-%d - %H:%M:%S")
 
 			event = self.db.get_event_by_id(event_id)
+			print(f"Event status: {event[0][8]}")
 			#If event is finished, update the status of current event to "finished" (2)
 			if(ending_date < now):
+
 				#Before updating, check the status. In the case where event is not updated yet
 				if(len(self.db.get_event_by_state_and_id(Status.FINISHED.value, event_id)) == 0):
 					self.db.update_event_state(event_id, Status.FINISHED.value)
@@ -279,7 +304,7 @@ class Bot(discord.Client):
 
 			#If starting date is in the past then update the status of current event to "running" (1)
 			elif(starting_date < now):
-				#print("currently running")
+				print("currently running")
 				
 				#Before updating, check the status
 				if(len(self.db.get_event_by_state_and_id(Status.RUNNING.value, event_id)) == 0):
@@ -300,7 +325,7 @@ class Bot(discord.Client):
 					await log_channel.send(embed=embed)
 
 				if(not self.already_notified):
-					channel = discord.utils.get(message.guild.channels, name="log")
+					channel = discord.utils.get(message.guild.channels, id=self.log_channel)
 					event_role = discord.utils.get(message.guild.roles, name=self.event_role_name)
 
 					description = "The event **" + str(event[0][1]) + "** ends in 15 minutes!"
@@ -315,11 +340,11 @@ class Bot(discord.Client):
 
 			#If none of the previous conditions triggered, it means it's still an upcoming event. So do nothing
 			else:
-				#print("upcoming event")
+				print("upcoming event")
 				#If the event starts in less than 30 minutes then send a message mentionning the event role if it hasn't be done already
 				if(not self.already_notified):
-					#print("not already notified")
-					channel = discord.utils.get(message.guild.channels, name="log")
+					print("not already notified")
+					channel = discord.utils.get(message.guild.channels, id=self.log_channel)
 					event_role = discord.utils.get(message.guild.roles, name=self.event_role_name)
 
 					description = "The event **" + str(event[0][1]) + "** starts in **15 minutes**!\n\n:warning: Don't forget to read the <#1085853981831602177> if not already done :warning:\n\nUse ``!help`` in <#1085676265270411344> to get available commands"
@@ -358,7 +383,6 @@ class Bot(discord.Client):
 			self.db.update_user(submission[1], points)
 
 
-
 	async def on_message(self, message):
 
 		if(message.author == self.user):
@@ -393,7 +417,21 @@ class Bot(discord.Client):
 
 						submission_date = datetime.datetime.now()
 
-						self.db.insert_into_submissions(message.author.id, int(event_id), self.sanitize(flag), submission_date)
+						flag = self.sanitize(flag, 64)
+
+						if(flag == None):
+							await member.send("Sorry message uses forbidden characters, it has not been sent")
+							return 
+
+						#Check if user sent this flag already
+						user_submissions = self.db.get_user_submissions(message.author.id, event_id)
+						for submission in user_submissions:
+							if(submission[3] == flag):
+								await member.send("You already sent this flag for this event")
+								return
+
+
+						self.db.insert_into_submissions(message.author.id, int(event_id), flag, submission_date)
 						#print("Your submission has been transmitted")
 						await member.send("Your submission has been transmitted")
 
@@ -412,7 +450,6 @@ class Bot(discord.Client):
 						await msg.add_reaction('8️⃣')
 						await msg.add_reaction('9️⃣')
 						await msg.add_reaction('🔟')
-
 					else:
 						await member.send("Sorry you used all your tries :'(")
 				else:
@@ -530,7 +567,7 @@ class Bot(discord.Client):
 			log_channel = discord.utils.get(message.guild.channels, id=self.log_channel)
 
 			#Mention everyone (not in embed because ping doesn't work in it)
-			await log_channel.send("@everyone")
+			#await log_channel.send("@everyone")
 			event_message = await log_channel.send(embed=embed)
 
 			self.last_event_message_id = event_message.id
@@ -558,12 +595,14 @@ class Bot(discord.Client):
 
 				self.end_event(event_id)
 
-				#Maybe put this into a function??? Cause used multiple times in code
 				event_role = discord.utils.get(message.guild.roles, name=self.event_role_name)
 
-				description = "The event " + str(event[0][1]) + " is now over"
+				description = f"The event {str(event_name)} (ID: {event_id}) is now over"
 				color = self.random_color()
-				embed = self.create_embed(str(event[0][1]) + " Event", description, color, "")
+				embed = self.create_embed(str(event_name) + " Event", description, color, "")
+
+
+				log_channel = discord.utils.get(message.guild.channels, id=self.log_channel)
 
 				await log_channel.send("<@&" + str(event_role.id) + ">")
 				await log_channel.send(embed=embed)
@@ -587,6 +626,17 @@ class Bot(discord.Client):
 				self.db.update_event_state(event_id, Status.CANCELLED.value)
 				#Delete the associated role
 				event_role = discord.utils.get(message.guild.roles, name=self.event_role_name)
+
+
+				description = f"The upcoming event (ID: {event_id}) is cancelled"
+				color = self.random_color()
+				embed = self.create_embed(str(event_name) + " Event", description, color, "")
+
+				log_channel = discord.utils.get(message.guild.channels, id=self.log_channel)
+
+				await log_channel.send("<@&" + str(event_role.id) + ">")
+				await log_channel.send(embed=embed)
+
 				await event_role.delete()
 
 				#Cancel the task because the event is over
@@ -603,6 +653,16 @@ class Bot(discord.Client):
 
 				#Delete the associated role
 				event_role = discord.utils.get(message.guild.roles, name=self.event_role_name)
+
+				description = f"The running event (ID: {event_id}) is cancelled"
+				color = self.random_color()
+				embed = self.create_embed(str(event_name) + " Event", description, color, "")
+
+				log_channel = discord.utils.get(message.guild.channels, id=self.log_channel)
+
+				await log_channel.send("<@&" + str(event_role.id) + ">")
+				await log_channel.send(embed=embed)
+
 				await event_role.delete()
 
 				#Cancel the task because the event is over
@@ -616,7 +676,7 @@ class Bot(discord.Client):
 				await message.channel.send("Event successfully cancelled!")
 
 			else:
-				await message.channel.send("Can't cancel this event. Is it existing and upcoming?")
+				await message.channel.send("Can't cancel this event. Is it existing or upcoming?")
 				return
 
 		#Add the correct flags for a specific event. Will be used to calculate points for users
@@ -865,7 +925,11 @@ class Bot(discord.Client):
 					#--------------------------------------------------------------------------------------------------------------------------------
 					#Part for an event -> !info <EVENT_ID>
 					
-					event_id = self.sanitize(message.content.split(" ")[1])
+					event_id = self.sanitize(message.content.split(" ")[1], 8)
+
+					if(event_id == None):
+						await message.channel.send("Format of event isn't correct")
+						return
 
 					#Check if event exists
 					if(len(self.db.get_event_by_id(event_id)) == 0): 
@@ -876,15 +940,15 @@ class Bot(discord.Client):
 					event = self.db.get_event_by_id(event_id)[0]
 					
 					#These fields are the same whatever the event's status 
-					description = f"Description: {event[2]}\nURL: {event[3]}\n\nStarting date: **{event[5]}**\nEnding date: **{event[6]}**\n\n:triangular_flag_on_post: Number of flags: **{event[4]}**"
+					description = f"**Description:** {event[2]}\n\n**URL:** {event[3]}\n\nStarting date: **{event[5]}**\nEnding date: **{event[6]}**\n\n:triangular_flag_on_post: Number of flags: **{event[4]}**"
 
 
 					if(event[8] == Status.UPCOMING.value):
 						#Add the status at the beginning
-						description = "Status: upcoming\n\n" + description
+						description = "Status: **upcoming**\n\n" + description
 					elif(event[8] == Status.RUNNING.value):
 						#Add the status at the beginning
-						description = "Status: running\n\n" + description
+						description = "Status: **running**\n\n" + description
 						number_participants = self.db.get_event_number_participants(event_id)[0][0]
 						number_submissions = self.db.get_number_submissions_by_event_id(event_id)[0][0]
 						description += f"\n\nCurrent number of participants: **{number_participants}**\nCurrent number of flags submitted: **{number_submissions}**"
@@ -893,7 +957,7 @@ class Bot(discord.Client):
 
 					elif(event[8] == Status.FINISHED.value):
 						#Add the status at the beginning
-						description = "Status: finished\n\n" + description
+						description = "Status: **finished**\n\n" + description
 						number_participants = self.db.get_event_number_participants(event_id)[0][0]
 						number_submissions = self.db.get_number_submissions_by_event_id(event_id)[0][0]
 						number_correct_flags = self.db.count_correct_submissions_by_event_id(event_id)[0][0]
