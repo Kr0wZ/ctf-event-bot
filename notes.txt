@@ -40,9 +40,50 @@ On update le flag dans la BDD, on check les utilisateurs qui ont le bon flag et 
 
 
 
+Modifications après tests :
+
+
+- DONE - Modification de la taille du champ "description" de la bdd (varchar 255 à varchar 4096)
+- DONE - Modifier la notification de secondes à minutes -> on ne peut pas directement faire time_delta.minutes donc faut convertir les minutes en secondes (minutes_before passé en param) puis utiliser time_delta.seconds
+Bug à cause de l'UTC qui n'était pas UTC+1 -> retirer alors une heure (3600 secondes) à time_delta.seconds
+- DONE - Ou bien utiliser sudo timedatectl set-timezone Europe/Paris sur le serveur pour éviter de modifier tout le code
+- DONE - Quand le leaderboard est vide alors ajouter un message correspondant.
+- DONE - Quand je cancel un event, le bot va poster un message dans le channel annonce pour préciser que l'évènement est annulé (avant de delete le role pour pouvoir ping tout le monde).
+- DONE - Faire pareil pour le !stop_event
+- DONE - Quand on fait un !info <EVENT_ID> modifier "Description", "Status" et "URL" en gras + ajouter une ligne entre "Description" et "URL"
+- DONE - Avec la commande !stop modifier la ligne 564 et utiliser event_id et event_name au lieu de event[0][1] (car on a déjà récupéré le [0])
+- DONE - Ajouter un check sur la taille d'un hash lorsqu'un utilisateur rentre le flag au niveau du bot.
+- DONE - En python, forcer uniquemement l'utilisation de caractères alphanumériques. Faire en sorte qu'il ne soit pas possible d'entrer des choses comme -> 𝓈𝒶𝓁𝓊𝓉, 𝐫𝐨𝐨𝐭_𝐟𝐥𝐚𝐠 ou encore des smileys.
+- DONE - Prendre en compte le cas où la personne rentre le même flag plusieurs fois. Il faut alors vérifier quand il rentre le flag que ce même utilisateur ne l'a pas déjà envoyé. Sinon message d'erreur
+
+
+
+
+- Pendant les tests, la mention everyone a été enlevée pour éviter le flood. Elle a été remise.
+
+
+- Faire les tests de ce qui vient d'être implémenté (!stop_event, !cancel_event, !submit des flags avec des caractères spéciaux + taille trop grande + 2 fois le même flag)
+
+
+
+
+
+
+
 - Dans une version plus poussée du bot, on pourrait créer un event en avance en connaissant déjà les bons flags. Dans ce cas, dès qu'un utilisateur submit un flag au bot, on peut directement calculer son nombre de points (il sera modifié au fur et à mesure de l'event en fonction des notes qui sont données et qui influent sur le score de difficulté des flags.)
 
+- Bug au niveau du calcul des first bloods (event id 9). Vérifier qu'on prend bien l'event id dans la requête (dans les tables flags et submissions), qu'on prend uniquement le premier flag d'un utilisateur. Cela vient peut-être du fait de stop un event en avance et d'un recréer un autre qui débute et se termine au milieu du premier qui a été stop.
+Ce bug est problématique dans le cas où on veut avoir plusieurs events à la fois.
+
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Setup database:
+
+- Connect to MySQL as root
+- Create database: create database ctfs
+- Create user: CREATE USER 'discord_bot_user'@'localhost' IDENTIFIED BY 'discord_bot_user';
+- Give privileges and apply them: GRANT ALL PRIVILEGES ON ctfs.* TO 'discord_bot_user'@'localhost'; FLUSH PRIVILEGES;
 
 
 Database tables:
