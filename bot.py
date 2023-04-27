@@ -622,7 +622,9 @@ class Bot(discord.Client):
 
 			#If the event exists and is upcoming then change its state to cancelled (3)
 			if(len(self.db.get_all_events_by_state(Status.UPCOMING.value)) != 0):
-				event_id = self.db.get_all_events_by_state(Status.UPCOMING.value)[0][0]
+				event = self.db.get_all_events_by_state(Status.UPCOMING.value)[0]
+				event_id = event[0]
+				event_name = event[1]
 				self.db.update_event_state(event_id, Status.CANCELLED.value)
 				#Delete the associated role
 				event_role = discord.utils.get(message.guild.roles, name=self.event_role_name)
