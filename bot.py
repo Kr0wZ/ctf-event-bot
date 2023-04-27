@@ -277,7 +277,7 @@ class Bot(discord.Client):
 			now = datetime.datetime.now().strftime("%y-%m-%d - %H:%M:%S")
 
 			event = self.db.get_event_by_id(event_id)
-			print(f"Event status: {event[0][8]}")
+			#print(f"Event status: {event[0][8]}")
 			#If event is finished, update the status of current event to "finished" (2)
 			if(ending_date < now):
 
@@ -304,7 +304,7 @@ class Bot(discord.Client):
 
 			#If starting date is in the past then update the status of current event to "running" (1)
 			elif(starting_date < now):
-				print("currently running")
+				#print("currently running")
 				
 				#Before updating, check the status
 				if(len(self.db.get_event_by_state_and_id(Status.RUNNING.value, event_id)) == 0):
@@ -340,10 +340,10 @@ class Bot(discord.Client):
 
 			#If none of the previous conditions triggered, it means it's still an upcoming event. So do nothing
 			else:
-				print("upcoming event")
+				#print("upcoming event")
 				#If the event starts in less than 30 minutes then send a message mentionning the event role if it hasn't be done already
 				if(not self.already_notified):
-					print("not already notified")
+					#print("not already notified")
 					channel = discord.utils.get(message.guild.channels, id=self.log_channel)
 					event_role = discord.utils.get(message.guild.roles, name=self.event_role_name)
 
