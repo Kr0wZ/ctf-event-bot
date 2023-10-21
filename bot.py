@@ -50,7 +50,7 @@ class Bot(discord.Client):
 		harmful = "\"\'\<\>\\\/\^\`\|\(\)\[\]\{\}\~\&\$\£\%\ù\*\#\@\µ\!\§\;\?\,\."
 		message = re.sub(r'[' + harmful + ']', '', message)
 
-		if(re.match("^[a-zA-Z0-9\_\-\=]*$", flag) != None):
+		if(re.match("^[a-zA-Z0-9\_\-\=]*$", message) != None):
 			return message
 		else:
 			return None
